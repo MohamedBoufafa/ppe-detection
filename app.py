@@ -385,7 +385,7 @@ def main():
             
             with col1:
                 st.subheader("Original Image")
-                st.image(image, use_container_width=True)
+                st.image(image, use_column_width=True)
             
             with st.spinner("🔍 Detecting PPE..."):
                 # Run inference
@@ -394,7 +394,7 @@ def main():
             
             with col2:
                 st.subheader("Detection Results")
-                st.image(annotated_image, use_container_width=True)
+                st.image(annotated_image, use_column_width=True)
             
             # Display detection statistics
             if detections:
@@ -537,11 +537,11 @@ def main():
                 col1, col2 = st.columns(2)
                 with col1:
                     st.subheader("Captured Frame")
-                    st.image(image, use_container_width=True)
+                    st.image(image, use_column_width=True)
                 
                 with col2:
                     st.subheader("Detection Results")
-                    st.image(annotated_image, use_container_width=True)
+                    st.image(annotated_image, use_column_width=True)
                 
                 if detections:
                     st.markdown("### 📊 Detection Summary")
@@ -598,11 +598,11 @@ def main():
                 col1, col2 = st.columns(2)
                 with col1:
                     st.subheader("Uploaded Frame")
-                    st.image(image, use_container_width=True)
+                    st.image(image, use_column_width=True)
                 
                 with col2:
                     st.subheader("Detection Results")
-                    st.image(annotated_image, use_container_width=True)
+                    st.image(annotated_image, use_column_width=True)
                 
                 if detections:
                     st.markdown("### 📊 Detection Summary")
