@@ -340,10 +340,12 @@ def main():
             "Confidence Threshold",
             min_value=0.0,
             max_value=1.0,
-            value=0.5,
+            value=0.25,
             step=0.05,
-            help="Minimum confidence for detections"
+            help="Minimum confidence for detections. Lower values detect more objects but may include false positives."
         )
+        
+        st.info("💡 **Tip**: Lower threshold (0.2-0.3) for small items like gloves and masks")
         
         st.divider()
         
