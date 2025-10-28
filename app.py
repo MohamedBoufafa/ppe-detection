@@ -6,6 +6,8 @@ import tempfile
 import os
 from ultralytics import YOLO
 import time
+import requests
+from pathlib import Path
 
 # Page configuration
 st.set_page_config(
@@ -89,6 +91,68 @@ COLORS = {
     'no-suit': (0, 0, 255),
     'no_shoes': (0, 0, 255)
 }
+
+@st.cache_resource
+def download_model_from_release(repo_owner, repo_name, tag="latest", model_filename="best.pt"):
+    """Download model from GitHub Releases"""
+    model_dir = Path("models")
+    model_dir.mkdir(exist_ok=True)
+    model_path = model_dir / model_filename
+    
+    # If model already exists, return it
+    if model_path.exists():
+        return str(model_path)
+    
+    try:
+        # Get latest release info
+        if tag == "latest":
+            api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/latest"
+        else:
+            api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/tags/{tag}"
+        
+        response = requests.get(api_url)
+        response.raise_for_status()
+        release_data = response.json()
+        
+        # Find the model asset
+        model_asset = None
+        for asset in release_data.get('assets', []):
+            if asset['name'] == model_filename:
+                model_asset = asset
+                break
+        
+        if not model_asset:
+            st.error(f"Model file '{model_filename}' not found in release assets")
+            return None
+        
+        # Download the model
+        download_url = model_asset['browser_download_url']
+        st.info(f"📥 Downloading model from GitHub Release...")
+        
+        response = requests.get(download_url, stream=True)
+        response.raise_for_status()
+        
+        total_size = int(response.headers.get('content-length', 0))
+        
+        with open(model_path, 'wb') as f:
+            if total_size == 0:
+                f.write(response.content)
+            else:
+                downloaded = 0
+                progress_bar = st.progress(0)
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        progress_bar.progress(downloaded / total_size)
+                progress_bar.empty()
+        
+        st.success(f"✅ Model downloaded successfully!")
+        return str(model_path)
+        
+    except Exception as e:
+        st.error(f"Error downloading model: {e}")
+        return None
 
 @st.cache_resource
 def load_model(model_path):
@@ -199,10 +263,48 @@ def main():
         st.subheader("1. Model Selection")
         model_option = st.radio(
             "Choose model source:",
-            ["Upload Model", "Use Default (if available)"]
+            ["Download from GitHub Release", "Upload Model", "Use Local (if available)"]
         )
         
-        if model_option == "Upload Model":
+        if model_option == "Download from GitHub Release":
+            with st.expander("⚙️ GitHub Release Settings", expanded=True):
+                repo_owner = st.text_input(
+                    "GitHub Username",
+                    value="",
+                    placeholder="your-username",
+                    help="Your GitHub username"
+                )
+                repo_name = st.text_input(
+                    "Repository Name",
+                    value="safty",
+                    help="Your repository name"
+                )
+                release_tag = st.text_input(
+                    "Release Tag",
+                    value="latest",
+                    help="Release tag or 'latest' for the latest release"
+                )
+                model_filename = st.text_input(
+                    "Model Filename",
+                    value="best.pt",
+                    help="Name of the model file in the release"
+                )
+                
+                if st.button("📥 Download Model", type="primary"):
+                    if repo_owner:
+                        model_path = download_model_from_release(
+                            repo_owner=repo_owner,
+                            repo_name=repo_name,
+                            tag=release_tag,
+                            model_filename=model_filename
+                        )
+                        if model_path:
+                            st.session_state.model = load_model(model_path)
+                            st.success("✅ Model loaded successfully!")
+                    else:
+                        st.error("Please enter your GitHub username")
+        
+        elif model_option == "Upload Model":
             uploaded_model = st.file_uploader(
                 "Upload your best.pt model",
                 type=['pt'],
@@ -215,13 +317,20 @@ def main():
                     f.write(uploaded_model.read())
                 st.session_state.model = load_model(model_path)
                 st.success("✅ Model loaded successfully!")
-        else:
-            # Check if default model exists
-            if os.path.exists('best.pt'):
-                st.session_state.model = load_model('best.pt')
-                st.success("✅ Default model loaded!")
-            else:
-                st.warning("⚠️ No default model found. Please upload a model.")
+        
+        else:  # Use Local
+            # Check if local model exists
+            local_paths = ['best.pt', 'models/best.pt', 'model/best.pt']
+            model_found = False
+            for path in local_paths:
+                if os.path.exists(path):
+                    st.session_state.model = load_model(path)
+                    st.success(f"✅ Local model loaded from {path}!")
+                    model_found = True
+                    break
+            
+            if not model_found:
+                st.warning("⚠️ No local model found. Please download or upload a model.")
         
         st.divider()
         
