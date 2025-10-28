@@ -347,6 +347,16 @@ def main():
         
         st.info("💡 **Tip**: Lower threshold (0.2-0.3) for small items like gloves and masks")
         
+        # Debug mode
+        debug_mode = st.checkbox(
+            "🔍 Debug Mode",
+            value=False,
+            help="Show ALL detections including very low confidence ones"
+        )
+        
+        if debug_mode:
+            st.warning("⚠️ Debug mode: Showing all detections with confidence > 0.01")
+        
         st.divider()
         
         # About
@@ -390,8 +400,30 @@ def main():
                 st.image(image, use_column_width=True)
             
             with st.spinner("🔍 Detecting PPE..."):
-                # Run inference
-                results = st.session_state.model(image, conf=conf_threshold, verbose=False)
+                # Run inference with very low threshold in debug mode
+                actual_conf = 0.01 if debug_mode else conf_threshold
+                results = st.session_state.model(image, conf=actual_conf, verbose=False)
+                
+                # Show raw detections in debug mode
+                if debug_mode:
+                    st.subheader("🔍 Raw Model Output (Debug)")
+                    all_boxes = results[0].boxes
+                    if len(all_boxes) > 0:
+                        debug_data = []
+                        for box in all_boxes:
+                            cls = int(box.cls[0].cpu().numpy())
+                            conf = float(box.conf[0].cpu().numpy())
+                            class_name = results[0].names[cls]
+                            debug_data.append({
+                                "Class": class_name,
+                                "Confidence": f"{conf:.4f}",
+                                "Above Threshold": "✅" if conf >= conf_threshold else "❌"
+                            })
+                        st.dataframe(debug_data)
+                        st.info(f"Total detections: {len(all_boxes)} | Above threshold ({conf_threshold}): {sum(1 for d in debug_data if d['Above Threshold'] == '✅')}")
+                    else:
+                        st.error("❌ No detections at all! Model might not be working properly.")
+                
                 annotated_image, detections = draw_detections(image, results, conf_threshold)
             
             with col2:
