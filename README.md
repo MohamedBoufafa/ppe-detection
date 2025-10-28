@@ -1,3 +1,14 @@
+---
+title: PPE Detection System
+emoji: 🦺
+colorFrom: red
+colorTo: orange
+sdk: streamlit
+sdk_version: "1.31.0"
+app_file: app.py
+pinned: false
+---
+
 # 🦺 PPE Detection System
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://huggingface.co/spaces/YOUR_USERNAME/ppe-detection)
